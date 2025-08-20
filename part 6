@@ -1,0 +1,37 @@
+import random
+from typing import Optional
+
+# -------------------------------
+# AI Bidding Logic with Reserve & Purse Constraint
+# -------------------------------
+def ai_bid(team, player, current_bid: float, rng: random.Random) -> Optional[float]:
+    """
+    Determine AI bid for a player:
+    - Must respect hidden reserve ceiling
+    - Can bid ±0.5Cr around hidden reserve
+    - Cannot exceed 1%-30% of team purse
+    """
+    if not team.has_slot() or not team.can_afford(player.base_price):
+        return None
+
+    # Base AI bid: hidden reserve
+    reserve = player._hidden_reserve or player.base_price
+    tier_hi = player._tier_hi or (reserve + 1.0)
+    
+    # AI random bid within ±0.5Cr of hidden reserve
+    bid = reserve + rng.choice([-0.5, 0, 0.5])
+    bid = min(bid, tier_hi)  # Ensure bid does not exceed tier ceiling
+
+    # Cap bid based on team purse: 1%-30% of available purse
+    max_spend = max(team.purse * 0.01, min(team.purse * 0.3, bid))
+    bid = min(bid, max_spend)
+
+    # Must be higher than current bid to place
+    if current_bid is not None and bid <= current_bid:
+        return None
+
+    # Ensure team can afford
+    if bid > team.purse:
+        return None
+
+    return round(bid, 2)
